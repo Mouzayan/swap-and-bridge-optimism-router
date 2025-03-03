@@ -23,9 +23,9 @@ interface IOUTbToken {
 }
 
 /**
- * Since we're working off of a local fork of the network, our tests will simply verify that all the events
- * that are expected to be emitted from the L1StandardBridge contract and other related Optimism contracts
- * are being emitted
+ * Since we're testing off of a local fork of the network, our tests will sverify that the events
+ * that are expected to be emitted from the L1StandardBridge contract and other related Optimism
+ * contracts are being emitted.
  */
 contract TestSwapAndBridgeOptimismRouter is Test, Deployers {
     using CurrencyLibrary for Currency;
