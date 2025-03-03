@@ -12,12 +12,7 @@ import {TransientStateLibrary} from "v4-core/libraries/TransientStateLibrary.sol
 import {CurrencySettler} from "@uniswap/v4-core/test/utils/CurrencySettler.sol";
 
 interface IL1StandardBridge {
-
-    function depositETHTo(
-        address _to,
-        uint32 _minGasLimit,
-        bytes calldata _extraData
-    ) external payable;
+    function depositETHTo(address _to, uint32 _minGasLimit, bytes calldata _extraData) external payable;
 
     function depositERC20To(
         address _l1Token,
@@ -34,15 +29,15 @@ interface IL1StandardBridge {
 // the pool manager, it bridges the output token from L1 to an Optimism L2, combining
 // the swap + bridge action in a single transaction.
 contract SwapAndBridgeOptimismRouter is Ownable {
-	using CurrencyLibrary for Currency;
-	using CurrencySettler for Currency;
-	using TransientStateLibrary for IPoolManager;
+    using CurrencyLibrary for Currency;
+    using CurrencySettler for Currency;
+    using TransientStateLibrary for IPoolManager;
 
     //////////////////////////////// ERRORS ////////////////////////////////
     error SBO_CallerNotManager();
     error SBO_TokenCannotBeBridged();
 
-	IPoolManager public immutable manager;
+    IPoolManager public immutable manager;
     IL1StandardBridge public immutable l1StandardBridge;
 
     /////////////////////////// DATA STRUCTURES ///////////////////////////
@@ -64,10 +59,7 @@ contract SwapAndBridgeOptimismRouter is Ownable {
     // which can only be updated by the owner of the contract
     mapping(address l1Token => address l2Token) public l1ToL2TokenAddresses;
 
-	constructor(
-        IPoolManager _manager,
-        IL1StandardBridge _l1StandardBridge
-    ) Ownable(msg.sender) {
+    constructor(IPoolManager _manager, IL1StandardBridge _l1StandardBridge) Ownable(msg.sender) {
         manager = _manager;
         l1StandardBridge = _l1StandardBridge;
     }
@@ -92,16 +84,12 @@ contract SwapAndBridgeOptimismRouter is Ownable {
             // Determine which token will be the output token based on swap direction
             // If zeroForOne is true, we're swapping token0 for token1, so token1 is output
             // If zeroForOne is false, we're swapping token1 for token0, so token0 is output
-            Currency l1TokenToBridge = params.zeroForOne
-                ? key.currency1
-                : key.currency0;
+            Currency l1TokenToBridge = params.zeroForOne ? key.currency1 : key.currency0;
 
             // address(0) is used for the native currency
             if (!l1TokenToBridge.isAddressZero()) {
                 // Look up the corresponding L2 token address from the mapping
-                address l2Token = l1ToL2TokenAddresses[
-                    Currency.unwrap(l1TokenToBridge)
-                ];
+                address l2Token = l1ToL2TokenAddresses[Currency.unwrap(l1TokenToBridge)];
                 // If no L2 token is registered (address(0)), the token can't be bridged
                 if (l2Token == address(0)) revert SBO_TokenCannotBeBridged();
             }
@@ -111,19 +99,15 @@ contract SwapAndBridgeOptimismRouter is Ownable {
         // This will trigger a callback where the swap logic occurs
         // The callback data includes all necessary information for the swap
         delta = abi.decode(
-            manager.unlock(
-                abi.encode(
-                    CallbackData(msg.sender, settings, key, params, hookData)
-                )
-            ),
-            (BalanceDelta)
+            manager.unlock(abi.encode(CallbackData(msg.sender, settings, key, params, hookData))), (BalanceDelta)
         );
 
         // After the swap is complete, if there's any ETH left in the contract
         uint256 ethBalance = address(this).balance;
-        if (ethBalance > 0)
+        if (ethBalance > 0) {
             // Send it back to the original sender
             CurrencyLibrary.ADDRESS_ZERO.transfer(msg.sender, ethBalance);
+        }
     }
 
     /**
@@ -155,14 +139,8 @@ contract SwapAndBridgeOptimismRouter is Ownable {
 
         // Get the net token changes for both tokens in the pool
         // Negative means we owe tokens, positive means we receive tokens
-        int256 deltaAfter0 = manager.currencyDelta(
-            address(this),
-            data.key.currency0
-        );
-        int256 deltaAfter1 = manager.currencyDelta(
-            address(this),
-            data.key.currency1
-        );
+        int256 deltaAfter0 = manager.currencyDelta(address(this), data.key.currency0);
+        int256 deltaAfter1 = manager.currencyDelta(address(this), data.key.currency1);
 
         // If we owe token0 (negative delta)
         if (deltaAfter0 < 0) {
@@ -177,33 +155,18 @@ contract SwapAndBridgeOptimismRouter is Ownable {
 
         // Same as above but for token1
         if (deltaAfter1 < 0) {
-            data.key.currency1.settle(
-                manager,
-                data.sender,
-                uint256(-deltaAfter1),
-                false
-            );
+            data.key.currency1.settle(manager, data.sender, uint256(-deltaAfter1), false);
         }
 
         // If we received token0 (positive delta)
         if (deltaAfter0 > 0) {
             // Take the tokens and either send to recipient or bridge them
-            _take(
-                data.key.currency0,
-                data.settings.recipientAddress,
-                uint256(deltaAfter0),
-                data.settings.bridgeTokens
-            );
+            _take(data.key.currency0, data.settings.recipientAddress, uint256(deltaAfter0), data.settings.bridgeTokens);
         }
 
         // Same as above but for token1
         if (deltaAfter1 > 0) {
-            _take(
-                data.key.currency1,
-                data.settings.recipientAddress,
-                uint256(deltaAfter1),
-                data.settings.bridgeTokens
-            );
+            _take(data.key.currency1, data.settings.recipientAddress, uint256(deltaAfter1), data.settings.bridgeTokens);
         }
 
         // Return the original swap delta
@@ -216,12 +179,7 @@ contract SwapAndBridgeOptimismRouter is Ownable {
      * we'll either take money from PM and send it directly to the recipient on the L1, or take the
      * money to the router contract first and initiate a bridge transaction for the recipient on the L2.
      */
-    function _take(
-        Currency currency,
-        address recipient,
-        uint256 amount,
-        bool bridgeToOptimism
-    ) internal {
+    function _take(Currency currency, address recipient, uint256 amount, bool bridgeToOptimism) internal {
         // If not bridging, just send the tokens to the swapper
         if (!bridgeToOptimism) {
             currency.take(manager, recipient, amount, false);
@@ -235,28 +193,15 @@ contract SwapAndBridgeOptimismRouter is Ownable {
                 address l1Token = Currency.unwrap(currency);
                 address l2Token = l1ToL2TokenAddresses[l1Token];
 
-                IERC20Minimal(l1Token).approve(
-                    address(l1StandardBridge),
-                    amount
-                );
+                IERC20Minimal(l1Token).approve(address(l1StandardBridge), amount);
 
-                l1StandardBridge.depositERC20To(
-                    l1Token,
-                    l2Token,
-                    recipient,
-                    amount,
-                    0,
-                    ""
-                );
+                l1StandardBridge.depositERC20To(l1Token, l2Token, recipient, amount, 0, "");
             }
         }
     }
 
     ////////////////////////// HELPER FUNCTIONS //////////////////////////
-    function addL1ToL2TokenAddress(
-        address l1Token,
-        address l2Token
-    ) external onlyOwner {
+    function addL1ToL2TokenAddress(address l1Token, address l2Token) external onlyOwner {
         l1ToL2TokenAddresses[l1Token] = l2Token;
     }
 
