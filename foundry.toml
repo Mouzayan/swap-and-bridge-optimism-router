@@ -9,7 +9,7 @@ via_ir = false
 ffi = true
 
 [rpc_endpoints]
-sepolia = "https://rpc.sepolia.org/"
+sepolia = "${SEPOLIA_RPC_URL}"
 op_sepolia = "https://sepolia.optimism.io"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
