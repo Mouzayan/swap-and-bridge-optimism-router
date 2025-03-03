@@ -22,6 +22,11 @@ interface IOUTbToken {
     function faucet() external;
 }
 
+/**
+ * Since we're working off of a local fork of the network, our tests will simply verify that all the events
+ * that are expected to be emitted from the L1StandardBridge contract and other related Optimism contracts
+ * are being emitted
+ */
 contract TestSwapAndBridgeOptimismRouter is Test, Deployers {
     using CurrencyLibrary for Currency;
     using PoolIdLibrary for PoolKey;
@@ -65,6 +70,9 @@ contract TestSwapAndBridgeOptimismRouter is Test, Deployers {
 
     SwapAndBridgeOptimismRouter poolSwapAndBridgeOptimism;
 
+    // For testing on Sepolia, Optimism has an ERC-20 called OUTb (Optimism Useless Token Bridged)
+    // that has an infinite faucet supply and supports the native bridge. So we'll set up an
+    // ETH/OUTb pool to test against that.
     // OUTb = Optimism Useless Token Bridged (ETH Sepolia and OP Sepolia addresses)
     IOUTbToken OUTbL1Token = IOUTbToken(0x12608ff9dac79d8443F17A4d39D93317BAD026Aa);
     IOUTbToken OUTbL2Token = IOUTbToken(0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2);
