@@ -100,28 +100,34 @@ contract TestSwapAndBridgeOptimismRouter is Test, Deployers {
         OUTbL1Token.approve(address(poolSwapAndBridgeOptimism), type(uint256).max);
         OUTbL1Token.approve(address(modifyLiquidityRouter), type(uint256).max);
 
-        // Create the OUTb token mapping on the periphery contract
+        // Create the OUTb token mapping on the router contract
         poolSwapAndBridgeOptimism.addL1ToL2TokenAddress(address(OUTbL1Token), address(OUTbL2Token));
 
-        // Deploy an ETH <> OUTb pool and add some liquidity there
+        // Initialize a new pool for trading ETH <> OUTb tokens
         (key,) = initPool(
-            CurrencyLibrary.ADDRESS_ZERO, Currency.wrap(address(OUTbL1Token)), IHooks(address(0)), 3000, SQRT_PRICE_1_1
+            CurrencyLibrary.ADDRESS_ZERO, // Token0 is ETH (represented by zero address)
+            Currency.wrap(address(OUTbL1Token)), // Token1 is the OUTb token
+            IHooks(address(0)), // No hooks attached to this pool
+            3000, // Fee tier (0.3%)
+            SQRT_PRICE_1_1 // Initial price (1:1 ratio)
         );
-        modifyLiquidityRouter.modifyLiquidity{value: 1 ether}(
-            key,
+
+        // Add initial liquidity to the pool
+        // The corresponding amount of OUTb tokens will be determined based on the price and liquidity parameters
+        modifyLiquidityRouter.modifyLiquidity{value: 1 ether}( // Sending 1 ETH with this call
+            key, // Pool identifier created above
             IPoolManager.ModifyLiquidityParams({
-                tickLower: -60,
-                tickUpper: 60,
-                liquidityDelta: 10 ether,
-                salt: bytes32(0)
+                tickLower: -60, // Lower price bound for position
+                tickUpper: 60, // Upper price bound for position
+                liquidityDelta: 10 ether, // The liquidity value of 10 ether is used to calculate the position size
+                salt: bytes32(0) // Unique identifier for this liquidity position
             }),
-            ZERO_BYTES
+            ZERO_BYTES // No additional data needed
         );
     }
 
     /**
-     * As long as we are running on a fork, we cannot check the OP Sepolia side of things
-     *     So we will only test based on the events being output by the contract
+     *     We are testing based on the events being emitted by the contract
      *     A separate script file exists which tests on actual Sepolia Testnet and OP Sepolia
      */
 
